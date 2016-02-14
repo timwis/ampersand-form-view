@@ -31,6 +31,12 @@ module.exports = View.extend({
         }
     },
 
+    template: [
+        '<form>',
+            '<fieldset data-hook="field-container"></fieldset>',
+        '</form>'
+    ].join('\n'),
+
     initialize: function(opts) {
         opts = opts || {};
         this.el = opts.el;
@@ -50,13 +56,9 @@ module.exports = View.extend({
         // add all our fields
         (result(opts, 'fields') || result(this, 'fields') || []).forEach(this.addField, this);
 
-        if (opts.autoRender) {
-            this.autoRender = opts.autoRender;
-            // &-view requires this.template && this.autoRender to be truthy in
-            // order to autoRender. template doesn't apply to &-form-view, but
-            // we manually flip the bit to honor autoRender
-            this.template = opts.template || this.template || true;
-        }
+        if (opts.autoRender) this.autoRender = opts.autoRender;
+
+        this.template = opts.template || this.template;
 
         if (opts.values) this._startingValues = opts.values;
 
@@ -124,7 +126,7 @@ module.exports = View.extend({
     },
 
     remove: function () {
-        this.el.removeEventListener('submit', this.handleSubmit, false);
+        this.formEl.removeEventListener('submit', this.handleSubmit, false);
         this._fieldViewsArray.forEach(function (field) {
             field.remove();
         });
@@ -164,11 +166,13 @@ module.exports = View.extend({
 
     render: function () {
         if (this.rendered) return;
-        if (!this.el) {
-            this.el = document.createElement('form');
-        }
+
+        this.renderWithTemplate(this);
+
+        this.formEl = this.query('form') || this.el;
+
         if (this.autoAppend) {
-            this.fieldContainerEl = this.el.querySelector('[data-hook~=field-container]') || this.el;
+            this.fieldContainerEl = this.queryByHook('field-container') || this.formEl;
         }
         this._fieldViewsArray.forEach(function renderEachField(fV) {
             this.renderField(fV, true);
@@ -183,7 +187,7 @@ module.exports = View.extend({
             delete this._startingValues;
         }
         this.handleSubmit = this.handleSubmit.bind(this);
-        this.el.addEventListener('submit', this.handleSubmit, false);
+        this.formEl.addEventListener('submit', this.handleSubmit, false);
         // force `change:valid` to be triggered when `valid === false` post-render,
         // despite `valid` not having changed from its default pre-render value of `false`
         this.set('valid', null, {silent: true});
